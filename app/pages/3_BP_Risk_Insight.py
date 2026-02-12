@@ -4,24 +4,32 @@ st.markdown(
     """
     <style>
     .cs-card {
-        background-color: #ffffff;
-        padding: 1.25rem 1.5rem;
-        border-radius: 0.85rem;
-        box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
-        border: 1px solid #e5e7eb;
-        margin-bottom: 1rem;
+        background: rgba(30, 41, 59, 0.4);
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        backdrop-filter: blur(8px);
+        margin-bottom: 1.5rem;
     }
 
     .cs-section-title {
-        font-size: 1.05rem;
+        font-family: 'Helvetica Neue', sans-serif;
         font-weight: 600;
-        margin-bottom: 0.35rem;
-        color: #111827;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: #f8fafc;
     }
 
     .cs-subtle {
-        color: #6b7280;
-        font-size: 0.9rem;
+        color: #94a3b8;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    
+    .cs-list li {
+        color: #cbd5e1;
+        margin-bottom: 0.25rem;
     }
     </style>
     """,
@@ -38,9 +46,9 @@ st.title("🩺 Blood Pressure & ECG")
 st.markdown(
     """
     <div class="cs-card">
-        <div class="cs-section-title">Physiological context</div>
+        <div class="cs-section-title">Physiological Context</div>
         <div class="cs-subtle">
-            Hypertension affects cardiac electrical activity.
+            Hypertension affects cardiac electrical activity in measurable ways, even before overt damage occurs.
         </div>
     </div>
     """,
@@ -50,10 +58,10 @@ st.markdown(
 with st.expander("ECG correlates of high BP", expanded=True):
     st.markdown(
         """
-        ### ECG correlates of high BP:
-        - Increased QRS amplitude  
-        - Ventricular hypertrophy patterns  
-        - ST-segment changes  
+        ### ECG Correlates of High BP:
+        - **Increased QRS Amplitude**: Suggesting higher voltage from thicker muscle.
+        - **Ventricular Hypertrophy Patterns**: Structural adaptation to pressure overload.
+        - **ST-Segment Changes**: Indicating strain or potential ischemia.
         """,
         unsafe_allow_html=False,
     )
@@ -61,9 +69,9 @@ with st.expander("ECG correlates of high BP", expanded=True):
 st.markdown(
     """
     <div class="cs-card">
-        <div class="cs-section-title">Model insight</div>
+        <div class="cs-section-title">Model Insight</div>
         <div class="cs-subtle">
-            Our ECG model captures these indirect patterns without measuring BP explicitly.
+            Our ECG model captures these indirect patterns without measuring BP explicitly, allowing it to factor hypertension-related risk into its overall cardiovascular assessment.
         </div>
     </div>
     """,

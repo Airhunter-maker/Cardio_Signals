@@ -10,24 +10,36 @@ st.markdown(
     """
     <style>
     .cs-card {
-        background-color: #ffffff;
-        padding: 1.25rem 1.5rem;
-        border-radius: 0.85rem;
-        box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
-        border: 1px solid #e5e7eb;
-        margin-bottom: 1rem;
+        background: rgba(30, 41, 59, 0.4);
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        backdrop-filter: blur(8px);
+        margin-bottom: 1.5rem;
     }
 
     .cs-section-title {
-        font-size: 1.05rem;
+        font-family: 'Helvetica Neue', sans-serif;
         font-weight: 600;
-        margin-bottom: 0.35rem;
-        color: #111827;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: #f8fafc;
     }
 
     .cs-subtle {
-        color: #6b7280;
-        font-size: 0.9rem;
+        color: #94a3b8;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    
+    .cs-info-box {
+        background: rgba(56, 189, 248, 0.1);
+        border-left: 4px solid #38bdf8;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        color: #e2e8f0;
+        margin-top: 1rem;
     }
     </style>
     """,
@@ -44,7 +56,7 @@ st.title("🧠 Clinical Outcome Relevance")
 st.markdown(
     """
     <div class="cs-card">
-        <div class="cs-section-title">Why outcome validation?</div>
+        <div class="cs-section-title">Why Outcome Validation?</div>
         <div class="cs-subtle">
             This page compares <strong>ROC-AUC</strong> performance across models, showing how ECG-derived
             risk relates to prediction of real cardiac failure outcomes.
@@ -60,24 +72,35 @@ if CSV_PATH.exists():
     st.markdown(
         """
         <div class="cs-card">
-            <div class="cs-section-title">Model comparison</div>
+            <div class="cs-section-title">Model Comparison</div>
             <div class="cs-subtle">
                 Each bar represents a different model configuration. Higher ROC-AUC indicates better
                 discrimination between patients who do and do not experience the outcome.
             </div>
-        </div>
         """,
         unsafe_allow_html=True,
     )
 
     container = st.container()
     with container:
-        fig, ax = plt.subplots()
-        ax.bar(df["Model"], df["ROC_AUC"])
-        ax.set_ylabel("ROC-AUC")
-        ax.set_xlabel("Model")
-        ax.set_title("Outcome prediction performance")
-        st.pyplot(fig)
+        with plt.style.context('dark_background'):
+            fig, ax = plt.subplots()
+            fig.patch.set_alpha(0.0)
+            ax.patch.set_alpha(0.0)
+            
+            # Using custom colors for bars if possible, or standard logic
+            bars = ax.bar(df["Model"], df["ROC_AUC"], color='#38bdf8', alpha=0.8)
+            
+            ax.set_ylabel("ROC-AUC", color='#e2e8f0')
+            ax.set_xlabel("Model", color='#e2e8f0')
+            ax.set_title("Outcome Prediction Performance", color='#f1f5f9')
+            ax.tick_params(colors='#94a3b8')
+            for spine in ax.spines.values():
+                spine.set_color('#475569')
+                
+            st.pyplot(fig)
+            
+    st.markdown("</div>", unsafe_allow_html=True)
 
     with st.expander("How to interpret this chart", expanded=True):
         st.markdown(
@@ -91,12 +114,9 @@ if CSV_PATH.exists():
 
     st.markdown(
         """
-        <div class="cs-card">
-            <div class="cs-section-title">Takeaway</div>
-            <div class="cs-subtle">
-                ECG-derived risk predicts real cardiac failure outcomes
-                and complements traditional clinical features.
-            </div>
+        <div class="cs-info-box">
+            <strong>Takeaway:</strong> ECG-derived risk predicts real cardiac failure outcomes
+            and complements traditional clinical features.
         </div>
         """,
         unsafe_allow_html=True,
