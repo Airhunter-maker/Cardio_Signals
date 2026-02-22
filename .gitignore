@@ -24,11 +24,11 @@ wheels/
 # Streamlit
 .streamlit/
 
-# Models & Data (Exclude large binary files)
-models/*.pkl
-models/scaler.pkl
+# Models & Data
 data/processed/*.npy
 !models/ecg_cnn_baseline.pth
+!models/*.pkl
+!models/scaler.pkl
 
 # OS
 .DS_Store
