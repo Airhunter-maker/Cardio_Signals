@@ -6,7 +6,7 @@ CardioSignals is a web application that predicts cardiovascular disease risk usi
 
 This is an educational and research tool, not a medical diagnostic device.
 
-**Project Link**: 
+**Project Link**: https://cardio-signals.streamlit.app/
 
 ---
 
