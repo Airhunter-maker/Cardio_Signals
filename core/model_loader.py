@@ -1,117 +1,114 @@
-"""
-core/model_loader.py
-Loading all CardioSignals models. Retrains sklearn models on-the-fly if .pkl files are missing.
-"""
-
+"""Model loading with auto-retrain fallback."""
 import os
-import sys
 import streamlit as st
-import numpy as np
 import pandas as pd
-import joblib
-import torch
-
-# ── Add repo root to path so models/ecg_model.py is importable ──
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
-
-from models.ecg_model import ECGCNN
-
-
-FEATURES = ['age', 'gender', 'height', 'weight',
-            'ap_hi', 'ap_lo', 'cholesterol', 'gluc',
-            'smoke', 'alco', 'active']
+import numpy as np
 
 
 @st.cache_resource(show_spinner=False)
-def load_clinical_models():
-    """Load or retrain Logistic Regression and Random Forest models."""
-    lr_path  = os.path.join(_ROOT, 'models', 'log_reg_model.pkl')
-    rf_path  = os.path.join(_ROOT, 'models', 'random_forest_model.pkl')
-    sc_path  = os.path.join(_ROOT, 'models', 'scaler.pkl')
+def load_all_models() -> dict:
+    """
+    Load all models. If sklearn pkl files missing, retrain and save.
+    Returns dict with keys: rf, lr, scaler, ecg
+    """
+    import joblib
 
-    if os.path.exists(lr_path) and os.path.exists(rf_path) and os.path.exists(sc_path):
+    result = {"rf": None, "lr": None, "scaler": None, "ecg": None}
+
+    # ── SKLEARN MODELS ────────────────────────────────────────────
+    rf_path  = "models/random_forest_model.pkl"
+    lr_path  = "models/log_reg_model.pkl"
+    scaler_path = "models/scaler.pkl"
+
+    if (os.path.exists(rf_path) and
+            os.path.exists(lr_path) and
+            os.path.exists(scaler_path)):
         try:
-            lr = joblib.load(lr_path)
-            rf = joblib.load(rf_path)
-            sc = joblib.load(sc_path)
-            return lr, rf, sc, True
+            result["rf"]     = joblib.load(rf_path)
+            result["lr"]     = joblib.load(lr_path)
+            result["scaler"] = joblib.load(scaler_path)
         except Exception as e:
-            st.session_state["errors"].append(f"Model load error: {e}")
+            st.session_state["errors"].append(
+                f"Model load error: {e}")
+    else:
+        # Retrain from data
+        try:
+            result["rf"], result["lr"], result["scaler"] = _retrain()
+        except Exception as e:
+            st.session_state["errors"].append(
+                f"Retrain error: {e}")
 
-    # ── CASE B: Retrain ──
-    try:
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.model_selection import train_test_split
-        from sklearn.preprocessing import StandardScaler
+    # ── ECG CNN ───────────────────────────────────────────────────
+    pth_path = "models/ecg_cnn_baseline.pth"
+    if os.path.exists(pth_path):
+        try:
+            import torch
+            import sys
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))
+                            .replace("/core", "").replace("\\core", ""))
+            from models.ecg_model import ECGCNN
+            model = ECGCNN()
+            model.load_state_dict(
+                torch.load(pth_path, map_location="cpu"))
+            model.eval()
+            result["ecg"] = model
+        except Exception as e:
+            st.session_state["errors"].append(
+                f"ECG model load error: {e}")
 
-        # Try repo root first, then data/raw as fallback
-        csv_path = os.path.join(_ROOT, 'cardio_base.csv')
-        if not os.path.exists(csv_path):
-            csv_path = os.path.join(_ROOT, 'data', 'raw', 'cardio_base.csv')
-
-        df = pd.read_csv(csv_path, sep=';')
-        df = df[(df['ap_hi'] >= 70) & (df['ap_hi'] <= 250)]
-        df = df[(df['ap_lo'] >= 40) & (df['ap_lo'] <= 150)]
-
-        X = df[FEATURES]
-        y = df['cardio']
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y)
-
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-
-        lr = LogisticRegression(max_iter=1000)
-        lr.fit(X_train_scaled, y_train)
-
-        rf = RandomForestClassifier(n_estimators=200,
-             random_state=42, class_weight='balanced')
-        rf.fit(X_train, y_train)
-
-        os.makedirs(os.path.join(_ROOT, 'models'), exist_ok=True)
-        joblib.dump(lr, lr_path)
-        joblib.dump(rf, rf_path)
-        joblib.dump(scaler, sc_path)
-
-        return lr, rf, scaler, True
-
-    except Exception as e:
-        st.session_state["errors"].append(f"Retrain error: {e}")
-        return None, None, None, False
+    return result
 
 
-@st.cache_resource(show_spinner=False)
-def load_ecg_model():
-    """Load pre-trained ECGCNN from .pth file."""
-    pth_path = os.path.join(_ROOT, 'models', 'ecg_cnn_baseline.pth')
-    try:
-        model = ECGCNN()
-        model.load_state_dict(
-            torch.load(pth_path, map_location='cpu'))
-        model.eval()
-        return model, True
-    except Exception as e:
-        st.session_state["errors"].append(f"ECG model load error: {e}")
-        return None, False
+def _retrain():
+    """Retrain sklearn models from raw data and save."""
+    import joblib
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.model_selection import train_test_split
 
+    # Find data file
+    data_paths = [
+        "cardio_base.csv",
+        "data/raw/cardio_base.csv",
+        "data/cardio_base.csv",
+    ]
+    df = None
+    for p in data_paths:
+        if os.path.exists(p):
+            df = pd.read_csv(p, sep=";")
+            break
+    if df is None:
+        raise FileNotFoundError(
+            "cardio_base.csv not found. Place it in the project root "
+            "or data/raw/")
 
-def load_all_models():
-    """Convenience wrapper. Returns dict with all models."""
-    lr, rf, scaler, clinical_ok = load_clinical_models()
-    ecg_model, ecg_ok = load_ecg_model()
+    # Clean
+    df = df[(df["ap_hi"] >= 70) & (df["ap_hi"] <= 250)]
+    df = df[(df["ap_lo"] >= 40) & (df["ap_lo"] <= 150)]
 
-    st.session_state["clinical_model_loaded"] = clinical_ok
-    st.session_state["ecg_model_loaded"] = ecg_ok
+    FEATURES = ["age", "gender", "height", "weight",
+                "ap_hi", "ap_lo", "cholesterol", "gluc",
+                "smoke", "alco", "active"]
+    X = df[FEATURES]
+    y = df["cardio"]
 
-    return {
-        "lr":      lr,
-        "rf":      rf,
-        "scaler":  scaler,
-        "ecg":     ecg_model,
-        "clinical_ok": clinical_ok,
-        "ecg_ok":  ecg_ok,
-    }
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y)
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+
+    lr = LogisticRegression(max_iter=1000, random_state=42)
+    lr.fit(X_train_scaled, y_train)
+
+    rf = RandomForestClassifier(
+        n_estimators=200, random_state=42, class_weight="balanced")
+    rf.fit(X_train, y_train)
+
+    os.makedirs("models", exist_ok=True)
+    joblib.dump(rf,     "models/random_forest_model.pkl")
+    joblib.dump(lr,     "models/log_reg_model.pkl")
+    joblib.dump(scaler, "models/scaler.pkl")
+
+    return rf, lr, scaler
