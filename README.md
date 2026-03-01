@@ -175,9 +175,3 @@ This application is **NOT** suitable for:
 ## 📄 License
 
 This project is developed for **academic and educational purposes**.
-
-Signals: AI-Powered Cardiovascular Risk Intelligence},
-  year = {2024},
-  url = {https://github.com/yourusername/CardioSignals}
-}
-```
